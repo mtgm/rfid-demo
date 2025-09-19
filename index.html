@@ -85,13 +85,13 @@
     </div>
   </div>
 
-  <!-- CDN import -->
+  <!-- CDN import: başka hiçbir yerde 'from "three"' YOK -->
   <script type="module">
-    import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js?v=6";
-    import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js?v=6";
+    import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js?v=7";
+    import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js?v=7";
 
     // === AYARLAR ===
-    const MODEL_PATH = "assets/model.glb?v=6"; // senin dosyan
+    const MODEL_PATH = "assets/dolap.glb?v=7"; // kullanacağın dosya buysa
     const PART_KEYS = {
       alt_panel: ["alt_panel"],
       ust_panel: ["ust_panel"],
@@ -117,8 +117,7 @@
     const diagDiv = document.getElementById('diag');
     const diagBox = document.getElementById('diagBox');
     const partTargets = { alt_panel:[], ust_panel:[], sol_panel:[], sag_panel:[] };
-
-    function log(msg){ diagDiv.textContent = msg; diagBox.textContent = msg; console.log(msg); }
+    const log = (m)=>{ diagDiv.textContent = m; diagBox.textContent = m; console.log(m); };
 
     init3D();
     await loadModel();
@@ -140,7 +139,6 @@
       const l1 = new THREE.DirectionalLight(0xffffff, 1.0); l1.position.set(3,4,5); scene.add(l1);
       const l2 = new THREE.AmbientLight(0xffffff, 0.55);    scene.add(l2);
 
-      // sürükle-döndür
       let drag=false, px=0, py=0;
       container.addEventListener('mousedown', e=>{drag=true;px=e.clientX;py=e.clientY;});
       window.addEventListener('mouseup', ()=>drag=false);
@@ -167,22 +165,20 @@
         root = gltf.scene;
         scene.add(root);
 
-        // Parçaları topla ve malzemeleri klonla
+        // parçaları topla + malzeme klonla
         root.traverse(obj=>{
           if (!obj.isMesh) return;
           const name = (obj.name||"").toLowerCase();
           const matName = (obj.material?.name||"").toLowerCase();
-          if (Array.isArray(obj.material)) obj.material = obj.material.map(m=>m.clone());
-          else obj.material = obj.material.clone();
+          obj.material = Array.isArray(obj.material) ? obj.material.map(m=>m.clone()) : obj.material.clone();
           for (const part in PART_KEYS){
-            const hit = PART_KEYS[part].some(k => name.includes(k) || matName.includes(k));
-            if (hit) partTargets[part].push(obj);
+            if (PART_KEYS[part].some(k => name.includes(k) || matName.includes(k))) partTargets[part].push(obj);
           }
         });
 
-        centerAndFrame(root);  // ← model merkezlenir ve kadrajlanır
+        centerAndFrame(root);
 
-        // Başlangıç: hepsi beyaz
+        // başlangıç: beyaz
         await applyPart("alt_panel","white");
         await applyPart("ust_panel","white");
         await applyPart("sol_panel","white");
@@ -190,25 +186,15 @@
         log("Hazır.");
       }catch(err){
         log("MODEL YÜKLENEMEDİ → " + err.message);
-        // yer tutucu
-        const placeholder = new THREE.Mesh(
-          new THREE.BoxGeometry(1.2,1.2,1.2),
-          new THREE.MeshStandardMaterial({color:0x445, roughness:0.6})
-        );
-        scene.add(placeholder);
-        root = placeholder;
-        centerAndFrame(root);
       }
     }
 
-    // === Merkezleme + kadraj ===
+    // merkezleme + kadraj
     function centerAndFrame(object){
-      // 1) merkeze taşı
       const box = new THREE.Box3().setFromObject(object);
       const center = box.getCenter(new THREE.Vector3());
       object.position.sub(center);
 
-      // 2) uygun mesafeyi hesapla
       const box2 = new THREE.Box3().setFromObject(object);
       const size = box2.getSize(new THREE.Vector3());
       const maxDim = Math.max(size.x, size.y, size.z);
@@ -228,17 +214,15 @@
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
-      if (root) centerAndFrame(root); // pencere değişince yeniden ortala/kadrajla
+      if (root) centerAndFrame(root);
     }
 
-    // === Doku yükleme ===
+    // dokular
     const textureCache = new Map();
     function loadTexture(url){
       return new Promise((resolve,reject)=>{
         if (textureCache.has(url)) return resolve(textureCache.get(url));
-        new THREE.TextureLoader().load(url, (tx)=>{
-          tx.wrapS = THREE.RepeatWrapping; tx.wrapT = THREE.RepeatWrapping;
-          tx.repeat.set(2,2);
+        new THREE.TextureLoader().load(url, tx=>{ tx.wrapS=tx.wrapT=THREE.RepeatWrapping; tx.repeat.set(2,2);
           tx.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()||8);
           textureCache.set(url, tx); resolve(tx);
         }, undefined, ()=>reject(new Error("Doku yüklenemedi: "+url)));
@@ -255,7 +239,6 @@
       return new THREE.MeshStandardMaterial({ color, roughness:0.6, metalness:0.05 });
     }
 
-    // === Uygulama ===
     async function applyPart(partKey, matKey){
       const targets = partTargets[partKey] || [];
       const mat = await buildMaterialFromKey(matKey);
@@ -263,7 +246,7 @@
       log(`${partKey} → ${matKey}`);
     }
 
-    // Butonlar
+    // butonlar
     document.querySelectorAll('button.btn[data-part]').forEach(btn=>{
       btn.addEventListener('click', ()=> applyPart(btn.dataset.part, btn.dataset.mat));
     });
@@ -274,10 +257,7 @@
       uidDiv.textContent = uid;
       const assign = UID_TO_ASSIGN[uid];
       if (!assign) return;
-      for (const part in assign){
-        const key = assign[part];
-        if (key) applyPart(part, key);
-      }
+      for (const part in assign){ const key = assign[part]; if (key) applyPart(part, key); }
     }
     document.getElementById('applyUid').addEventListener('click', ()=>{
       applyUid(document.getElementById('uidInput').value);
