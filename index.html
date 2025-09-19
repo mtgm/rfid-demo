@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <title>RFID 3D Konfigüratör (4 Parça: alt/üst/sol/sağ)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        :root {
+            --hdr-h: 64px;
+            --tlb-h: 120px;
+            --bg: #0b0d12;
+            --panel: #0b0f1a;
+            --line: #1d2230;
+            --ink: #e9eef5;
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            background: var(--bg);
+            color: var(--ink);
+            font-family: system-ui,Segoe UI,Roboto,Helvetica,Arial
+        }
+
+        .app {
+            display: flex;
+            flex-direction: column;
+            min-height: 100dvh
+        }
+
+        header {
+            height: var(--hdr-h);
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--line);
+            background: #0f121a;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-sizing: border-box
+        }
+
+            header h1 {
+                font-size: 18px;
+                margin: 0;
+                font-weight: 600
+            }
+
+        .badge {
+            font-size: 12px;
+            background: #1b2333;
+            border: 1px solid #2a3650;
+            padding: 4px 8px;
+            border-radius: 999px
+        }
+
+        .spacer {
+            flex: 1
+        }
+
+        .panel {
+            padding: 6px 10px;
+            border: 1px solid #2a3650;
+            border-radius: 8px;
+            background: var(--panel)
+        }
+
+        .kbd {
+            font-family: ui-monospace,Consolas,Menlo,Monaco,monospace;
+            font-size: 12px;
+            padding: 2px 6px;
+            border: 1px solid #2a3650;
+            border-bottom-width: 2px;
+            border-radius: 6px;
+            background: var(--panel)
+        }
+
+        label {
+            font-size: 12px;
+            opacity: .8
+        }
+
+        #viewer {
+            position: relative;
+            flex: 1 1 auto;
+            min-height: 260px;
+            overflow: hidden
+        }
+
+        #canvasContainer {
+            position: absolute;
+            inset: 0
+        }
+
+        .toolbar {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            padding: 12px 16px;
+            border-top: 1px solid var(--line);
+            background: #0f121a;
+            min-height: var(--tlb-h);
+            flex-wrap: wrap
+        }
+
+        .input {
+            border: 1px solid #2a3650;
+            background: var(--panel);
+            color: var(--ink);
+            border-radius: 10px;
+            padding: 8px 10px
+        }
+
+        .btn {
+            border: 1px solid #2a3650;
+            background: #111827;
+            color: var(--ink);
+            padding: 8px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px
+        }
+
+            .btn:hover {
+                background: #172036
+            }
+
+        .card {
+            border: 1px dashed #2a3650;
+            border-radius: 10px;
+            padding: 8px 10px;
+            background: var(--panel)
+        }
+
+        .col {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap
+        }
+
+        .title {
+            font-weight: 600;
+            margin-bottom: 6px
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <header>
+            <h1>RFID 3D Konfigüratör</h1><span class="badge">4 Parça</span>
+            <div class="spacer"></div>
+            <div class="panel"><div><label>Son UID</label></div><div id="uid" class="kbd">—</div></div>
+            <div class="panel"><div><label>Durum</label></div><div id="diag" class="kbd">—</div></div>
+        </header>
+
+        <div id="viewer"><div id="canvasContainer"></div></div>
+
+        <div class="toolbar">
+            <div class="card">
+                <div class="title">UID Girişi</div>
+                <input id="uidInput" class="input" placeholder="ör. 0001234567" />
+                <button id="applyUid" class="btn">Uygula</button>
+            </div>
+
+            <div class="card">
+                <div class="title">ALT PANEL</div>
+                <div class="col">
+                    <button class="btn" data-part="alt_panel" data-mat="walnut">Ceviz</button>
+                    <button class="btn" data-part="alt_panel" data-mat="oak">Meşe</button>
+                    <button class="btn" data-part="alt_panel" data-mat="white">Beyaz</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="title">ÜST PANEL</div>
+                <div class="col">
+                    <button class="btn" data-part="ust_panel" data-mat="walnut">Ceviz</button>
+                    <button class="btn" data-part="ust_panel" data-mat="oak">Meşe</button>
+                    <button class="btn" data-part="ust_panel" data-mat="white">Beyaz</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="title">SOL PANEL</div>
+                <div class="col">
+                    <button class="btn" data-part="sol_panel" data-mat="walnut">Ceviz</button>
+                    <button class="btn" data-part="sol_panel" data-mat="oak">Meşe</button>
+                    <button class="btn" data-part="sol_panel" data-mat="white">Beyaz</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="title">SAĞ PANEL</div>
+                <div class="col">
+                    <button class="btn" data-part="sag_panel" data-mat="walnut">Ceviz</button>
+                    <button class="btn" data-part="sag_panel" data-mat="oak">Meşe</button>
+                    <button class="btn" data-part="sag_panel" data-mat="white">Beyaz</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Module import -->
+    <script type="module">
+    import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+    import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
+
+    // === AYARLAR ===
+    const MODEL_PATH = "assets/model.glb";
+
+    // GLB içindeki malzeme/mesh adlarında bu anahtarları arayacağız:
+    const PART_KEYS = {
+      alt_panel: ["alt_panel"],
+      ust_panel: ["ust_panel"],
+      sol_panel: ["sol_panel"],
+      sag_panel: ["sag_panel"]
+    };
+
+    // Doku yolları (isimleri ve uzantıları textures klasöründeki dosyalarla aynı olsun)
+    const MATERIAL_TEXTURES = {
+      walnut: "textures/walnut.jpg",
+      oak:    "textures/oak.jpg",
+      white:  "textures/white.jpg"
+    };
+    const MATERIAL_COLORS = { walnut:0x8b5a2b, oak:0xb88a55, white:0xeeeeee }; // fallback
+
+    // UID → Parça bazlı malzeme eşleme (örnek; değiştirilebilir)
+    // İstersen tek UID ile birden çok parçayı beraber değiştirebilirsin.
+    const UID_TO_ASSIGN = {
+      "0001234567": { alt_panel:"walnut" },
+      "0002345678": { ust_panel:"oak"    },
+      "0003456789": { sol_panel:"white", sag_panel:"walnut" }
+    };
+
+    // === SAHNE ===
+    let scene, camera, renderer, root;
+    const container = document.getElementById('canvasContainer');
+    const uidDiv = document.getElementById('uid');
+    const diagDiv = document.getElementById('diag');
+
+    // Her parça için mesh listesini tut
+    const partTargets = {
+      alt_panel: [],
+      ust_panel: [],
+      sol_panel: [],
+      sag_panel: []
+    };
+
+    init3D();
+    await loadModel();
+    animate();
+
+    function init3D(){
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x0b0d12);
+
+      const r = container.getBoundingClientRect();
+      const w = r.width || window.innerWidth, h = r.height || (window.innerHeight - 156);
+
+      camera = new THREE.PerspectiveCamera(50, w/h, 0.1, 200);
+      camera.position.set(2.4, 1.6, 3.2);
+
+      renderer = new THREE.WebGLRenderer({ antialias:true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+      renderer.setSize(w, h);
+      container.appendChild(renderer.domElement);
+
+      const l1 = new THREE.DirectionalLight(0xffffff, 1.0); l1.position.set(3,4,5); scene.add(l1);
+      const l2 = new THREE.AmbientLight(0xffffff, 0.5);     scene.add(l2);
+
+      const floor = new THREE.Mesh(
+        new THREE.PlaneGeometry(40,40),
+        new THREE.MeshStandardMaterial({color:0x0e111a, roughness:1})
+      ); floor.rotation.x = -Math.PI/2; floor.position.y = -0.75; scene.add(floor);
+
+      // Basit döndürme
+      let drag=false, px=0, py=0;
+      container.addEventListener('mousedown', e=>{drag=true;px=e.clientX;py=e.clientY;});
+      window.addEventListener('mouseup', ()=>drag=false);
+      window.addEventListener('mousemove', e=>{
+        if(!drag) return;
+        const dx=e.clientX-px, dy=e.clientY-py; px=e.clientX; py=e.clientY;
+        if (root) { root.rotation.y += dx*0.01; root.rotation.x += dy*0.01; }
+      });
+      window.addEventListener('resize', onResize);
+    }
+
+    async function loadModel(){
+      diag("Model yükleniyor: "+MODEL_PATH);
+      const gltf = await new GLTFLoader().loadAsync(MODEL_PATH);
+      root = gltf.scene;
+      scene.add(root);
+
+      // Hedefleri ad/MaterialName üzerinden eşle
+      root.traverse(obj=>{
+        if (!obj.isMesh) return;
+        const name = (obj.name||"").toLowerCase();
+        const matName = (obj.material?.name||"").toLowerCase();
+
+        // Paylaşılan malzemeleri klonla ki her parça bağımsız değişsin
+        if (Array.isArray(obj.material)) obj.material = obj.material.map(m=>m.clone());
+        else obj.material = obj.material.clone();
+
+        // Dört parça için anahtar kelime eşleşmesi
+        for (const part in PART_KEYS){
+          const keys = PART_KEYS[part];
+          const hit = keys.some(k => name.includes(k) || matName.includes(k));
+          if (hit) partTargets[part].push(obj);
+        }
+      });
+
+      diag(`Parça sayıları → alt:${partTargets.alt_panel.length} | üst:${partTargets.ust_panel.length} | sol:${partTargets.sol_panel.length} | sağ:${partTargets.sag_panel.length}`);
+
+      // Başlangıç: hepsini beyaz yap
+      await applyPart("alt_panel",  "white");
+      await applyPart("ust_panel",  "white");
+      await applyPart("sol_panel",  "white");
+      await applyPart("sag_panel",  "white");
+    }
+
+    function onResize(){
+      const r = container.getBoundingClientRect();
+      const w = r.width || window.innerWidth, h = r.height || (window.innerHeight - 156);
+      camera.aspect = w/h; camera.updateProjectionMatrix(); renderer.setSize(w,h);
+    }
+    function animate(){ requestAnimationFrame(animate); renderer.render(scene,camera); }
+    function diag(msg){ diagDiv.textContent = msg; }
+
+    // === Doku yükleme ===
+    const textureCache = new Map();
+    function loadTexture(url){
+      if (textureCache.has(url)) return Promise.resolve(textureCache.get(url));
+      return new Promise((resolve,reject)=>{
+        new THREE.TextureLoader().load(url, (tx)=>{
+          textureCache.set(url, tx); resolve(tx);
+        }, undefined, ()=>reject(new Error("Doku yüklenemedi: "+url)));
+      });
+    }
+    async function buildMaterialFromKey(key){
+      const path = MATERIAL_TEXTURES[key];
+      if (path){
+        try{
+          const tx = await loadTexture(path);
+          tx.wrapS = THREE.RepeatWrapping; tx.wrapT = THREE.RepeatWrapping;
+          tx.repeat.set(2,2);
+          tx.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()||8);
+          return new THREE.MeshStandardMaterial({ map: tx, roughness:0.6, metalness:0.05 });
+        }catch(e){
+          diag(e.message+" → renk fallback");
+        }
+      }
+      const color = MATERIAL_COLORS[key]||0xcccccc;
+      return new THREE.MeshStandardMaterial({ color, roughness:0.6, metalness:0.05 });
+    }
+
+    // === Uygulama ===
+    async function applyPart(partKey, matKey){
+      const targets = partTargets[partKey] || [];
+      const mat = await buildMaterialFromKey(matKey);
+      targets.forEach(m => { m.material = mat; m.material.needsUpdate = true; });
+      diag(`${partKey} → ${matKey}`);
+    }
+
+    // Butonlar
+    document.querySelectorAll('button.btn[data-part]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const part = btn.dataset.part, key = btn.dataset.mat;
+        applyPart(part, key);
+      });
+    });
+
+    // UID simülasyonu
+    function applyUid(uidRaw){
+      const uid = (uidRaw||"").trim(); if(!uid) return;
+      uidDiv.textContent = uid;
+      const assign = UID_TO_ASSIGN[uid];
+      if (!assign) return;
+      for (const part in assign){
+        const key = assign[part];
+        if (key) applyPart(part, key);
+      }
+    }
+    document.getElementById('applyUid').addEventListener('click', ()=>{
+      applyUid(document.getElementById('uidInput').value);
+    });
+    </script>
+</body>
+</html>
