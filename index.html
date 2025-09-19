@@ -153,13 +153,28 @@
     };
     const MATERIAL_COLORS = { walnut:0x8b5a2b, oak:0xb88a55, white:0xeeeeee };
 
-    // Başlangıç doku ayarları
-    const TEX_TWEAK = {
-      alt_panel: { repeat:[0.35,0.35], rotDeg: 0  },
-      ust_panel: { repeat:[0.35,0.35], rotDeg: 0  },
-      sol_panel: { repeat:[0.35,0.35], rotDeg: 90 },
-      sag_panel: { repeat:[0.35,0.35], rotDeg: 90 }
-    };
+// ❶ Parça eşleşmeleri aynı kalsın (PART_KEYS, MATERIAL_* vs. dokunma)
+
+// ❷ Varsayılan doku ayarları (tüm modeller için başlangıç şablonu)
+const DEFAULT_TEX_TWEAK = {
+  alt_panel: { repeat:[0.35,0.35], rotDeg: 0  },
+  ust_panel: { repeat:[0.35,0.35], rotDeg: 0  },
+  sol_panel: { repeat:[0.35,0.35], rotDeg: 90 },
+  sag_panel: { repeat:[0.35,0.35], rotDeg: 90 }
+};
+
+// ❸ MODEL-BAZLI DURUM: her modelin kendi malzeme ve tweak hafızası var
+const STATE = {
+  A: {
+    mat:   { alt_panel:"white", ust_panel:"white", sol_panel:"white", sag_panel:"white" },
+    tweak: JSON.parse(JSON.stringify(DEFAULT_TEX_TWEAK))
+  },
+  B: {
+    mat:   { alt_panel:"white", ust_panel:"white", sol_panel:"white", sag_panel:"white" },
+    tweak: JSON.parse(JSON.stringify(DEFAULT_TEX_TWEAK))
+  }
+};
+
 
     // ====== DURUM ======
     let scene, camera, renderer, controls, root, currentModel = "A";
@@ -269,10 +284,13 @@ async function loadModelFrom(path, keepView=false){
     });
 
     // Başlangıç: beyaz + doku parametreleri
-    for (const p of Object.keys(partTargets)){
-      CURRENT_MAT[p] = "white";
-      await applyPart(p, "white", /*onlyTex=*/true);
-    }
+// ❹ Bu model için ÖNCEDEN kaydedilmiş malzeme/tweak'leri uygula
+for (const p of Object.keys(partTargets)){
+  const savedMat = STATE[currentModel].mat[p] || "white";
+  // malzemeyi uygula (onlyTex=false), ardından tweak zaten applyPart içinde uygulanacak
+  await applyPart(p, savedMat, /*onlyTex=*/false);
+}
+
 
     log("Hazır. ("+keyLabel(currentModel)+")");
   }catch(e){ log("MODEL YÜKLENEMEDİ → "+e.message); }
@@ -344,33 +362,40 @@ async function loadModelFrom(path, keepView=false){
       const color = MATERIAL_COLORS[key]||0xcccccc;
       return new THREE.MeshStandardMaterial({ color, roughness:0.6, metalness:0.05 });
     }
-    async function applyPart(partKey, matKey, onlyTex=false){
-      const targets = partTargets[partKey] || [];
-      if (!targets.length){ log(partKey+" için mesh bulunamadı."); return; }
+async function applyPart(partKey, matKey, onlyTex=false){
+  const targets = partTargets[partKey] || [];
+  if (!targets.length){ log(partKey+" için mesh bulunamadı."); return; }
 
-      if (!onlyTex){
-        const mat = await buildMaterialFromKey(matKey);
-        targets.forEach(m => { m.material = mat; m.material.needsUpdate = true; });
-        CURRENT_MAT[partKey] = matKey;
-      }
-      applyTexParams(partKey);
-      const t = TEX_TWEAK[partKey]; log(`${partKey} → ${CURRENT_MAT[partKey]} | U:${t.repeat[0]} V:${t.repeat[1]} R:${t.rotDeg}°`);
-    }
-    function applyTexParams(partKey){
-      const targets = partTargets[partKey] || [];
-      const cfg = TEX_TWEAK[partKey] || {repeat:[1,1], rotDeg:0};
-      targets.forEach(m=>{
-        const mats = Array.isArray(m.material) ? m.material : [m.material];
-        mats.forEach(mat=>{
-          if (!mat.map) return;
-          mat.map = mat.map.clone();
-          mat.map.repeat.set(cfg.repeat[0], cfg.repeat[1]);
-          mat.map.center.set(0.5,0.5);
-          mat.map.rotation = (cfg.rotDeg * Math.PI) / 180;
-          mat.map.needsUpdate = true;
-        });
-      });
-    }
+  if (!onlyTex){
+    const mat = await buildMaterialFromKey(matKey);
+    targets.forEach(m => { m.material = mat; m.material.needsUpdate = true; });
+    // aktif modelin malzeme hafızasını güncelle
+    STATE[currentModel].mat[partKey] = matKey;
+  }
+
+  applyTexParams(partKey);
+
+  const t = STATE[currentModel].tweak[partKey];
+  const m = STATE[currentModel].mat[partKey];
+  log(`${partKey} → ${m} | U:${t.repeat[0]} V:${t.repeat[1]} R:${t.rotDeg}° (model ${currentModel})`);
+}
+
+function applyTexParams(partKey){
+  const targets = partTargets[partKey] || [];
+  const cfg = STATE[currentModel].tweak[partKey];
+  targets.forEach(m=>{
+    const mats = Array.isArray(m.material) ? m.material : [m.material];
+    mats.forEach(mat=>{
+      if (!mat.map) return;
+      mat.map = mat.map.clone();
+      mat.map.repeat.set(cfg.repeat[0], cfg.repeat[1]);
+      mat.map.center.set(0.5,0.5);
+      mat.map.rotation = (cfg.rotDeg * Math.PI) / 180;
+      mat.map.needsUpdate = true;
+    });
+  });
+}
+
 
     // === Parça butonları & UID örneği ===
     document.querySelectorAll('button[data-part]').forEach(btn=>{
@@ -394,20 +419,21 @@ async function loadModelFrom(path, keepView=false){
     });
 
     // Dinamik doku paneli (mevcut)
-    function syncUIFromState(){
-      const p = partSel.value;
-      const cfg = TEX_TWEAK[p];
-      uScale.value = uVal.value = cfg.repeat[0];
-      vScale.value = vVal.value = cfg.repeat[1];
-      rot.value = rotVal.value = cfg.rotDeg;
-    }
-    function readUIToState(){
-      const p = partSel.value;
-      TEX_TWEAK[p] = {
-        repeat:[ clamp(parseFloat(uVal.value),0.1,2.5), clamp(parseFloat(vVal.value),0.1,2.5) ],
-        rotDeg: clamp(parseInt(rotVal.value||"0",10), 0, 180)
-      };
-    }
+function syncUIFromState(){
+  const p = partSel.value;
+  const t = STATE[currentModel].tweak[p];
+  uScale.value = uVal.value = t.repeat[0];
+  vScale.value = vVal.value = t.repeat[1];
+  rot.value    = rotVal.value = t.rotDeg;
+}
+    
+function readUIToState(){
+  const p = partSel.value;
+  const repU = clamp(parseFloat(uVal.value), 0.1, 2.5);
+  const repV = clamp(parseFloat(vVal.value), 0.1, 2.5);
+  const rdeg = clamp(parseInt(rotVal.value||"0",10), 0, 180);
+  STATE[currentModel].tweak[p] = { repeat:[repU,repV], rotDeg:rdeg };
+}
     function clamp(v,min,max){ return isNaN(v)?min:Math.max(min,Math.min(max,v)); }
     [uScale,vScale,rot].forEach(inp=>{
       inp.addEventListener('input', ()=>{
@@ -428,11 +454,14 @@ async function loadModelFrom(path, keepView=false){
     document.getElementById('applyTex').addEventListener('click', ()=>{
       applyPart(partSel.value, CURRENT_MAT[partSel.value], /*onlyTex=*/true);
     });
-    document.getElementById('resetTex').addEventListener('click', ()=>{
-      const p = partSel.value;
-      TEX_TWEAK[p] = { repeat:[0.35,0.35], rotDeg:(p.includes("sol")||p.includes("sag"))?90:0 };
-      syncUIFromState(); applyTexParams(p);
-    });
+document.getElementById('resetTex').addEventListener('click', ()=>{
+  const p = partSel.value;
+  const def = DEFAULT_TEX_TWEAK[p];
+  STATE[currentModel].tweak[p] = { repeat:[...def.repeat], rotDeg:def.rotDeg };
+  syncUIFromState();
+  applyTexParams(p);
+});
+
     document.getElementById('copyCfg').addEventListener('click', async ()=>{
       const txt = JSON.stringify(TEX_TWEAK, null, 2);
       try{ await navigator.clipboard.writeText(txt); log("Ayarlar panoya kopyalandı."); }
@@ -441,4 +470,5 @@ async function loadModelFrom(path, keepView=false){
   </script>
 </body>
 </html>
+
 
