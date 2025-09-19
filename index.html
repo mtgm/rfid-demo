@@ -21,11 +21,11 @@
     .mini{font-size:12px;opacity:.75}
   </style>
 
-  <!-- Import map: 'three' adını CDN'e eşle -->
+  <!-- Import map -->
   <script type="importmap">
   {
     "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js?v=13"
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js?v=15"
     }
   }
   </script>
@@ -39,6 +39,16 @@
   </div>
 
   <div class="toolbar">
+    <!-- MODEL SEÇ: Yeni eklendi -->
+    <div class="card">
+      <div class="row"><strong>Model Seç</strong></div>
+      <div class="row">
+        <button class="btn" id="modelA">Model A</button>
+        <button class="btn" id="modelB">Model B</button>
+      </div>
+      <div class="mini">assets/model.glb ve assets/model2.glb yükleyin.</div>
+    </div>
+
     <div class="card">
       <div class="row"><strong>UID Girişi</strong></div>
       <div class="row">
@@ -83,7 +93,7 @@
       </div>
     </div>
 
-    <!-- DİNAMİK DOKU AYARI -->
+    <!-- Dinamik Doku Ayarı -->
     <div class="card" style="min-width:280px">
       <div class="row"><strong>Doku Ayarları (Dinamik)</strong></div>
       <div class="row">
@@ -121,12 +131,15 @@
 
   <script type="module">
     import * as THREE from "three";
-    import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js?v=13";
-    import { MeshoptDecoder } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/meshopt_decoder.module.js?v=13";
-    import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js?v=13";
+    import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js?v=15";
+    import { MeshoptDecoder } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/meshopt_decoder.module.js?v=15";
+    import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js?v=15";
 
     // ====== AYARLAR ======
-    const MODEL_PATH = "assets/model.glb?v=13";   // gerekirse dolap.glb/dolap_v1.glb yap
+    const MODEL_PATHS = {
+      A: "assets/model.glb?v=15",
+      B: "assets/model2.glb?v=15"   // ikinci modelini bu adla koy
+    };
     const PART_KEYS = {
       alt_panel: ["alt_panel","alt","bottom","base"],
       ust_panel: ["ust_panel","ust","üst","top","kapak"],
@@ -140,23 +153,23 @@
     };
     const MATERIAL_COLORS = { walnut:0x8b5a2b, oak:0xb88a55, white:0xeeeeee };
 
-    // Başlangıç doku ayarları (parça bazlı)
+    // Başlangıç doku ayarları
     const TEX_TWEAK = {
-      alt_panel: { repeat:[0.20,0.20], rotDeg: 0  },
-      ust_panel: { repeat:[0.20,0.20], rotDeg: 0  },
-      sol_panel: { repeat:[0.20,0.20], rotDeg: 0 },
-      sag_panel: { repeat:[0.20,0.20], rotDeg: 0 }
+      alt_panel: { repeat:[0.35,0.35], rotDeg: 0  },
+      ust_panel: { repeat:[0.35,0.35], rotDeg: 0  },
+      sol_panel: { repeat:[0.35,0.35], rotDeg: 90 },
+      sag_panel: { repeat:[0.35,0.35], rotDeg: 90 }
     };
 
     // ====== DURUM ======
-    let scene, camera, renderer, controls, root;
+    let scene, camera, renderer, controls, root, currentModel = "A";
     const container = document.getElementById('canvasContainer');
     const diagEl = document.getElementById('diag');
     const partTargets = { alt_panel:[], ust_panel:[], sol_panel:[], sag_panel:[] };
     const CURRENT_MAT = { alt_panel:"white", ust_panel:"white", sol_panel:"white", sag_panel:"white" };
     const log = (m)=>{ diagEl.textContent = m; console.log(m); };
 
-    // UI elemanları
+    // UI elemanları (doku paneli)
     const partSel = document.getElementById('partSel');
     const uScale = document.getElementById('uScale'); const uVal = document.getElementById('uVal');
     const vScale = document.getElementById('vScale'); const vVal = document.getElementById('vVal');
@@ -166,8 +179,12 @@
     const resetTexBtn = document.getElementById('resetTex');
     const copyCfgBtn = document.getElementById('copyCfg');
 
+    // Model butonları
+    document.getElementById('modelA').onclick = ()=> switchModel("A");
+    document.getElementById('modelB').onclick = ()=> switchModel("B");
+
     init3D();
-    await loadModel();
+    await loadModelFrom(MODEL_PATHS[currentModel]);
     animate();
     syncUIFromState();
 
@@ -203,33 +220,71 @@
     }
     function animate(){ requestAnimationFrame(animate); controls.update(); renderer.render(scene,camera); }
 
-    async function loadModel(){
+    async function switchModel(key){
+      if (!MODEL_PATHS[key]) { log("Model yolu yok: "+key); return; }
+      currentModel = key;
+      await loadModelFrom(MODEL_PATHS[key]);
+    }
+
+    async function loadModelFrom(path){
       try{
-        log("Model yükleniyor…");
+        log("Model yükleniyor… "+path);
+        // Eski root’u temizle
+        disposeRoot();
+
+        // Hedef dizilerini sıfırla
+        for (const k in partTargets) partTargets[k] = [];
+
         const loader = new GLTFLoader();
         loader.setMeshoptDecoder(MeshoptDecoder);
+        const gltf = await loader.loadAsync(path);
 
-        const gltf = await loader.loadAsync(MODEL_PATH);
-        root = gltf.scene; scene.add(root);
+        root = gltf.scene;
+        scene.add(root);
+
         centerAndFrame(root);
 
+        // Parçaları topla + malzeme klonla
         root.traverse(obj=>{
           if (!obj.isMesh) return;
           const name = (obj.name||"").toLowerCase();
           const matName = (obj.material?.name||"").toLowerCase();
+          obj.castShadow = true; obj.receiveShadow = true;
           obj.material = Array.isArray(obj.material) ? obj.material.map(m=>m.clone()) : obj.material.clone();
           for (const key in PART_KEYS){
             if (PART_KEYS[key].some(k=> name.includes(k) || matName.includes(k))) partTargets[key].push(obj);
           }
         });
 
-        // Başlangıç: beyaz + tweak uygula
+        // Başlangıç: beyaz + doku parametreleri
         for (const p of Object.keys(partTargets)){
+          CURRENT_MAT[p] = "white";
           await applyPart(p, "white", /*onlyTex=*/true);
         }
 
-        log("Hazır.");
+        log("Hazır. ("+keyLabel(currentModel)+")");
       }catch(e){ log("MODEL YÜKLENEMEDİ → "+e.message); }
+    }
+
+    function keyLabel(k){ return k==="A"?"Model A":"Model B"; }
+
+    function disposeRoot(){
+      if (!root) return;
+      scene.remove(root);
+      root.traverse(obj=>{
+        if (obj.isMesh){
+          if (obj.geometry) obj.geometry.dispose();
+          const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+          mats.forEach(m=>{
+            if (!m) return;
+            ["map","normalMap","roughnessMap","metalnessMap","aoMap","emissiveMap"].forEach(k=>{
+              if (m[k]) { m[k].dispose(); }
+            });
+            m.dispose();
+          });
+        }
+      });
+      root = null;
     }
 
     function centerAndFrame(object){
@@ -270,8 +325,6 @@
       const color = MATERIAL_COLORS[key]||0xcccccc;
       return new THREE.MeshStandardMaterial({ color, roughness:0.6, metalness:0.05 });
     }
-
-    // --- Uygulama: malzeme + parça tweak ---
     async function applyPart(partKey, matKey, onlyTex=false){
       const targets = partTargets[partKey] || [];
       if (!targets.length){ log(partKey+" için mesh bulunamadı."); return; }
@@ -281,11 +334,9 @@
         targets.forEach(m => { m.material = mat; m.material.needsUpdate = true; });
         CURRENT_MAT[partKey] = matKey;
       }
-
-      applyTexParams(partKey); // her durumda en güncel ölçek/yön
-      log(`${partKey} → ${CURRENT_MAT[partKey]} | U:${TEX_TWEAK[partKey].repeat[0]} V:${TEX_TWEAK[partKey].repeat[1]} R:${TEX_TWEAK[partKey].rotDeg}°`);
+      applyTexParams(partKey);
+      const t = TEX_TWEAK[partKey]; log(`${partKey} → ${CURRENT_MAT[partKey]} | U:${t.repeat[0]} V:${t.repeat[1]} R:${t.rotDeg}°`);
     }
-
     function applyTexParams(partKey){
       const targets = partTargets[partKey] || [];
       const cfg = TEX_TWEAK[partKey] || {repeat:[1,1], rotDeg:0};
@@ -293,7 +344,6 @@
         const mats = Array.isArray(m.material) ? m.material : [m.material];
         mats.forEach(mat=>{
           if (!mat.map) return;
-          // Her parça kendi kopyasını kullansın
           mat.map = mat.map.clone();
           mat.map.repeat.set(cfg.repeat[0], cfg.repeat[1]);
           mat.map.center.set(0.5,0.5);
@@ -303,17 +353,28 @@
       });
     }
 
-    // === UI OLAYLARI ===
+    // === Parça butonları & UID örneği ===
     document.querySelectorAll('button[data-part]').forEach(btn=>{
       btn.addEventListener('click', ()=> applyPart(btn.dataset.part, btn.dataset.mat));
     });
     document.getElementById('applyUid').addEventListener('click', ()=>{
       const uid = document.getElementById('uidInput').value.trim();
       if (!uid) return;
-      if (uid === "0001234567") applyPart("alt_panel","walnut");
+      // Örnek UID eşleştirmesi:
+      const map = {
+        "0001234567": { alt_panel:"walnut" },
+        "0002345678": { ust_panel:"oak"    },
+        "0003456789": { sol_panel:"white", sag_panel:"walnut" }
+      };
+      const choices = map[uid];
+      if (choices){
+        for (const part in choices) applyPart(part, choices[part]);
+      } else {
+        log("UID tanımsız: "+uid);
+      }
     });
 
-    // Dinamik panel
+    // Dinamik doku paneli (mevcut)
     function syncUIFromState(){
       const p = partSel.value;
       const cfg = TEX_TWEAK[p];
@@ -329,7 +390,6 @@
       };
     }
     function clamp(v,min,max){ return isNaN(v)?min:Math.max(min,Math.min(max,v)); }
-
     [uScale,vScale,rot].forEach(inp=>{
       inp.addEventListener('input', ()=>{
         if (inp===uScale) uVal.value = inp.value;
@@ -342,14 +402,19 @@
       inp.addEventListener('change', ()=>{ readUIToState(); applyTexParams(partSel.value); syncUIFromState(); });
     });
     partSel.addEventListener('change', syncUIFromState);
-    rot90.addEventListener('click', ()=>{ rot.value=rotVal.value= (parseInt(rotVal.value,10)===90?0:90); readUIToState(); applyTexParams(partSel.value); });
-    applyTexBtn.addEventListener('click', ()=> applyPart(partSel.value, CURRENT_MAT[partSel.value], /*onlyTex=*/true));
-    resetTexBtn.addEventListener('click', ()=>{
+    document.getElementById('rot90').addEventListener('click', ()=>{
+      rot.value=rotVal.value= (parseInt(rotVal.value,10)===90?0:90);
+      readUIToState(); applyTexParams(partSel.value);
+    });
+    document.getElementById('applyTex').addEventListener('click', ()=>{
+      applyPart(partSel.value, CURRENT_MAT[partSel.value], /*onlyTex=*/true);
+    });
+    document.getElementById('resetTex').addEventListener('click', ()=>{
       const p = partSel.value;
       TEX_TWEAK[p] = { repeat:[0.35,0.35], rotDeg:(p.includes("sol")||p.includes("sag"))?90:0 };
       syncUIFromState(); applyTexParams(p);
     });
-    copyCfgBtn.addEventListener('click', async ()=>{
+    document.getElementById('copyCfg').addEventListener('click', async ()=>{
       const txt = JSON.stringify(TEX_TWEAK, null, 2);
       try{ await navigator.clipboard.writeText(txt); log("Ayarlar panoya kopyalandı."); }
       catch{ console.log(txt); log("Kopyalanamadı, konsola yazıldı."); }
