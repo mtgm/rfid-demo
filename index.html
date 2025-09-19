@@ -5,24 +5,24 @@
   <title>RFID 3D Konfigüratör</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body{margin:0;background:#0b0d12;color:#e9eef5;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;display:flex;flex-direction:column;min-height:100vh}
-    header{padding:10px 16px;border-bottom:1px solid #1d2230;background:#0f121a;display:flex;align-items:center;gap:16px}
+    body{margin:0;background:#f3f0ea;color:#0b0d12;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;display:flex;flex-direction:column;min-height:100vh}
+    header{padding:10px 16px;border-bottom:1px solid #d9d2c7;background:#ffffffcc;backdrop-filter:saturate(1.2) blur(2px);display:flex;align-items:center;gap:16px}
     header h1{font-size:16px;margin:0;font-weight:600}
-    #viewer{flex:1;position:relative;min-height:320px}
+    #viewer{flex:1;position:relative;min-height:360px}
     #canvasContainer{position:absolute;inset:0}
-    .toolbar{padding:12px 16px;border-top:1px solid #1d2230;background:#0f121a;display:flex;gap:12px;flex-wrap:wrap}
-    .card{border:1px dashed #2a3650;border-radius:8px;padding:8px 10px;background:#0b0f1a}
-    .btn{border:1px solid #2a3650;background:#111827;color:#e9eef5;padding:6px 10px;border-radius:6px;cursor:pointer}
-    .btn:hover{background:#172036}
-    .input{border:1px solid #2a3650;background:#0b0f1a;color:#e9eef5;padding:6px 10px;border-radius:6px}
-    .diag{position:absolute;left:12px;bottom:12px;background:rgba(15,18,26,.9);border:1px solid #2a3650;border-radius:6px;padding:6px 10px;font-size:12px;max-width:80vw;white-space:pre-wrap}
+    .toolbar{padding:12px 16px;border-top:1px solid #d9d2c7;background:#ffffffcc;backdrop-filter:saturate(1.2) blur(2px);display:flex;gap:12px;flex-wrap:wrap}
+    .card{border:1px dashed #c7b9a4;border-radius:10px;padding:8px 10px;background:#fff}
+    .btn{border:1px solid #c7b9a4;background:#fff;color:#2b2b2b;padding:6px 10px;border-radius:8px;cursor:pointer}
+    .btn:hover{background:#f4efe8}
+    .input{border:1px solid #c7b9a4;background:#fff;color:#2b2b2b;padding:6px 10px;border-radius:8px}
+    .diag{position:absolute;left:12px;bottom:12px;background:#ffffffdd;border:1px solid #c7b9a4;border-radius:8px;padding:6px 10px;font-size:12px;max-width:80vw;white-space:pre-wrap}
   </style>
 
   <!-- Import map: 'three' adını CDN'e eşle -->
   <script type="importmap">
   {
     "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js?v=11"
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js?v=12"
     }
   }
   </script>
@@ -69,24 +69,35 @@
 
   <script type="module">
     import * as THREE from "three";
-    import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js?v=11";
-    import { MeshoptDecoder } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/meshopt_decoder.module.js?v=11";
-    import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js?v=11";
+    import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js?v=12";
+    import { MeshoptDecoder } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/meshopt_decoder.module.js?v=12";
+    import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js?v=12";
 
     // ====== AYARLAR ======
-    const MODEL_PATH = "assets/model.glb?v=11";   // gerekirse dolap.glb/dolap_v1.glb yap
-    const PART_KEYS = {                           // ad ya da material.name içinde bunlar geçerse eşle
-      alt_panel: ["alt_panel","alt"],
-      ust_panel: ["ust_panel","üst","ust"],
+    const MODEL_PATH = "assets/model.glb?v=12";   // gerekirse dolap.glb/dolap_v1.glb yap
+    // Parça eşleşme anahtarları (mesh adı veya material adı)
+    const PART_KEYS = {
+      alt_panel: ["alt_panel","alt","bottom","base"],
+      ust_panel: ["ust_panel","ust","üst","top","kapak"],
       sol_panel: ["sol_panel","sol","left"],
-      sag_panel: ["sag_panel","sağ","sag","right"]
+      sag_panel: ["sag_panel","sag","sağ","right"]
     };
+    // Doku yolları (varsa kullanılır; yoksa renk fallback)
     const MATERIAL_TEXTURES = {
       walnut: "textures/walnut.jpg",
       oak:    "textures/oak.jpg",
       white:  "textures/white.jpg"
     };
-    const MATERIAL_COLORS = { walnut:0x8b5a2b, oak:0xb88a55, white:0xeeeeee }; // doku yoksa fallback
+    const MATERIAL_COLORS = { walnut:0x8b5a2b, oak:0xb88a55, white:0xeeeeee };
+
+    // Parça bazlı “desen ölçeği ve yön” ayarı
+    // repeat küçüldükçe desen büyür. rotDeg: 0 ya da 90 tipik yeter.
+    const TEX_TWEAK = {
+      alt_panel: { repeat:[0.35,0.35], rotDeg: 0  },
+      ust_panel: { repeat:[0.35,0.35], rotDeg: 0  },
+      sol_panel: { repeat:[0.35,0.35], rotDeg: 90 },
+      sag_panel: { repeat:[0.35,0.35], rotDeg: 90 }
+    };
 
     // ====== SAHNE ======
     let scene, camera, renderer, controls, root;
@@ -101,7 +112,7 @@
 
     function init3D(){
       scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x0b0d12);
+      scene.background = new THREE.Color(0xf3f0ea); // açık bej/beyaz arkaplan
 
       const {w,h} = size();
       camera = new THREE.PerspectiveCamera(50, w/h, 0.01, 5000);
@@ -112,19 +123,22 @@
       renderer.setSize(w, h);
       container.appendChild(renderer.domElement);
 
-      // Işıklar (önce konumlandır, sonra sahneye ekle)
+      // Işıklar (doğru ekleme)
       const d1 = new THREE.DirectionalLight(0xffffff, 1.0);
       d1.position.set(3,4,5);
       scene.add(d1);
-      scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+      const amb = new THREE.AmbientLight(0xffffff, 0.55);
+      scene.add(amb);
 
       // Orbit Controls (zoom/pan/rotate)
       controls = new OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
       controls.dampingFactor = 0.08;
-      controls.minDistance = 0.2;
+      controls.minDistance = 0.25;
       controls.maxDistance = 50;
-      controls.target.set(0,0,0);
+      controls.zoomSpeed = 1.0;
+      controls.rotateSpeed = 0.8;
+      controls.panSpeed = 0.6;
 
       window.addEventListener('resize', onResize);
     }
@@ -144,16 +158,15 @@
       try{
         log("Model yükleniyor…");
         const loader = new GLTFLoader();
-        loader.setMeshoptDecoder(MeshoptDecoder); // Meshopt sıkıştırma için gerekli
+        loader.setMeshoptDecoder(MeshoptDecoder); // Meshopt sıkıştırma için
 
         const gltf = await loader.loadAsync(MODEL_PATH);
         root = gltf.scene;
         scene.add(root);
 
-        // Orijin merkezleme + kadraj
         centerAndFrame(root);
 
-        // Parça gruplarını topla; malzemeleri klonla ki bağımsız değişsin
+        // Parça gruplarını topla; malzemeleri klonla
         root.traverse(obj=>{
           if (!obj.isMesh) return;
           const name = (obj.name||"").toLowerCase();
@@ -177,12 +190,10 @@
     }
 
     function centerAndFrame(object){
-      // 1) modeli orijine al
       const box = new THREE.Box3().setFromObject(object);
       const center = box.getCenter(new THREE.Vector3());
       object.position.sub(center);
 
-      // 2) kamerayı uygun mesafeye çek ve hedefi sıfıra koy
       const size = box.getSize(new THREE.Vector3());
       const maxDim = Math.max(size.x, size.y, size.z);
       const fitOffset = 1.6;
@@ -191,8 +202,7 @@
 
       camera.position.set(0, 0, dist);
       camera.near = dist/50; camera.far = dist*50; camera.updateProjectionMatrix();
-      controls.target.set(0,0,0);
-      controls.update();
+      if (controls){ controls.target.set(0,0,0); controls.update(); }
     }
 
     function onResize(){
@@ -200,35 +210,31 @@
       camera.aspect = w/h; camera.updateProjectionMatrix();
       renderer.setSize(w,h);
       controls && controls.update();
-      // model çerçevesi sabit kalsın istiyorsan, uncomment:
-      // if (root) centerAndFrame(root);
     }
 
     // ====== DOKU YÜKLEYİCİ ======
     const textureCache = new Map();
-function loadTexture(url){
-  return new Promise((resolve,reject)=>{
-    if (textureCache.has(url)) return resolve(textureCache.get(url));
-    new THREE.TextureLoader().load(
-      url,
-      (tx)=>{
-        // Dokunun tam oturması için döşemeyi kapat / 1x1 yap
-        tx.wrapS = THREE.ClampToEdgeWrapping;
-        tx.wrapT = THREE.ClampToEdgeWrapping;
-        tx.repeat.set(1,1);           // ← eskiden (2,2) idi
-        tx.offset.set(0,0);
-        // Renkler doğal görünsün
-        tx.colorSpace = THREE.SRGBColorSpace;   // r160+
-        tx.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()||8);
-        textureCache.set(url, tx);
-        resolve(tx);
-      },
-      undefined,
-      ()=>reject(new Error("Doku yüklenemedi: "+url))
-    );
-  });
-}
-
+    function loadTexture(url){
+      return new Promise((resolve,reject)=>{
+        if (textureCache.has(url)) return resolve(textureCache.get(url));
+        new THREE.TextureLoader().load(
+          url,
+          (tx)=>{
+            // Doğal renkler ve düzgün kaplama
+            tx.colorSpace = THREE.SRGBColorSpace;
+            tx.wrapS = THREE.RepeatWrapping;
+            tx.wrapT = THREE.RepeatWrapping;
+            tx.center.set(0.5, 0.5);   // pivot
+            tx.repeat.set(1,1);        // temel; parça bazında ayarlanacak
+            tx.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()||8);
+            textureCache.set(url, tx);
+            resolve(tx);
+          },
+          undefined,
+          ()=>reject(new Error("Doku yüklenemedi: "+url))
+        );
+      });
+    }
 
     async function buildMaterialFromKey(key){
       const path = MATERIAL_TEXTURES[key];
@@ -244,10 +250,24 @@ function loadTexture(url){
       return new THREE.MeshStandardMaterial({ color, roughness:0.6, metalness:0.05 });
     }
 
+    // Parça uygulaması: ölçek + yön aynı anda
     async function applyPart(partKey, matKey){
       const targets = partTargets[partKey] || [];
       if (!targets.length){ log(partKey+" için mesh bulunamadı."); return; }
+
       const mat = await buildMaterialFromKey(matKey);
+
+      // Doku ayarı parça bazında
+      const cfg = TEX_TWEAK[partKey] || {};
+      if (mat.map){
+        mat.map = mat.map.clone();  // diğer parçalardan bağımsız olsun
+        const [ru, rv] = cfg.repeat || [1,1];
+        mat.map.repeat.set(ru, rv);
+        mat.map.center.set(0.5, 0.5);
+        mat.map.rotation = ((cfg.rotDeg || 0) * Math.PI) / 180;
+        mat.map.needsUpdate = true;
+      }
+
       targets.forEach(m => { m.material = mat; m.material.needsUpdate = true; });
       log(`${partKey} → ${matKey}`);
     }
@@ -259,10 +279,8 @@ function loadTexture(url){
     document.getElementById('applyUid').addEventListener('click', ()=>{
       const uid = document.getElementById('uidInput').value.trim();
       if (!uid) return;
-      // örnek: UID ile toplu atama yapabilirsin
-      if (uid === "0001234567") applyPart("alt_panel","walnut");
+      if (uid === "0001234567") applyPart("alt_panel","walnut"); // örnek
     });
   </script>
 </body>
 </html>
-
