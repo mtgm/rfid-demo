@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <title>Three.js Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>html,body{height:100%;margin:0;background:#0b0d12}#app{position:fixed;inset:0}</style>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module">
+    import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js?v=2";
+    const el = document.getElementById('app');
+    const r = new THREE.WebGLRenderer({antialias:true}); r.setSize(innerWidth,innerHeight); el.appendChild(r.domElement);
+    const s = new THREE.Scene(); s.background = new THREE.Color(0x0b0d12);
+    const c = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 100); c.position.set(2,1.2,3);
+    const l = new THREE.DirectionalLight(0xffffff,1); l.position.set(3,4,5); s.add(l); s.add(new THREE.AmbientLight(0xffffff,.5));
+    const m = new THREE.Mesh(new THREE.BoxGeometry(1,1,1), new THREE.MeshStandardMaterial({color:0x6699ff}));
+    s.add(m);
+    addEventListener('resize', ()=>{c.aspect=innerWidth/innerHeight;c.updateProjectionMatrix();r.setSize(innerWidth,innerHeight);});
+    (function anim(){ requestAnimationFrame(anim); m.rotation.y+=0.01; r.render(s,c); })();
+  </script>
+</body>
+</html>
