@@ -11,18 +11,21 @@
     #viewer{flex:1;position:relative;min-height:360px}
     #canvasContainer{position:absolute;inset:0}
     .toolbar{padding:12px 16px;border-top:1px solid #d9d2c7;background:#ffffffcc;backdrop-filter:saturate(1.2) blur(2px);display:flex;gap:12px;flex-wrap:wrap}
-    .card{border:1px dashed #c7b9a4;border-radius:10px;padding:8px 10px;background:#fff}
+    .card{border:1px dashed #c7b9a4;border-radius:10px;padding:10px 12px;background:#fff;display:flex;flex-direction:column;gap:8px}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     .btn{border:1px solid #c7b9a4;background:#fff;color:#2b2b2b;padding:6px 10px;border-radius:8px;cursor:pointer}
     .btn:hover{background:#f4efe8}
     .input{border:1px solid #c7b9a4;background:#fff;color:#2b2b2b;padding:6px 10px;border-radius:8px}
+    .range{width:180px}
     .diag{position:absolute;left:12px;bottom:12px;background:#ffffffdd;border:1px solid #c7b9a4;border-radius:8px;padding:6px 10px;font-size:12px;max-width:80vw;white-space:pre-wrap}
+    .mini{font-size:12px;opacity:.75}
   </style>
 
   <!-- Import map: 'three' adını CDN'e eşle -->
   <script type="importmap">
   {
     "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js?v=12"
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js?v=13"
     }
   }
   </script>
@@ -37,52 +40,99 @@
 
   <div class="toolbar">
     <div class="card">
-      <div>UID Girişi</div>
-      <input id="uidInput" class="input" placeholder="ör. 0001234567" />
-      <button id="applyUid" class="btn">Uygula</button>
+      <div class="row"><strong>UID Girişi</strong></div>
+      <div class="row">
+        <input id="uidInput" class="input" placeholder="ör. 0001234567" />
+        <button id="applyUid" class="btn">Uygula</button>
+      </div>
     </div>
+
     <div class="card">
-      <div>ALT PANEL</div>
-      <button class="btn" data-part="alt_panel" data-mat="walnut">Ceviz</button>
-      <button class="btn" data-part="alt_panel" data-mat="oak">Meşe</button>
-      <button class="btn" data-part="alt_panel" data-mat="white">Beyaz</button>
+      <div class="row"><strong>ALT PANEL</strong></div>
+      <div class="row">
+        <button class="btn" data-part="alt_panel" data-mat="walnut">Ceviz</button>
+        <button class="btn" data-part="alt_panel" data-mat="oak">Meşe</button>
+        <button class="btn" data-part="alt_panel" data-mat="white">Beyaz</button>
+      </div>
     </div>
+
     <div class="card">
-      <div>ÜST PANEL</div>
-      <button class="btn" data-part="ust_panel" data-mat="walnut">Ceviz</button>
-      <button class="btn" data-part="ust_panel" data-mat="oak">Meşe</button>
-      <button class="btn" data-part="ust_panel" data-mat="white">Beyaz</button>
+      <div class="row"><strong>ÜST PANEL</strong></div>
+      <div class="row">
+        <button class="btn" data-part="ust_panel" data-mat="walnut">Ceviz</button>
+        <button class="btn" data-part="ust_panel" data-mat="oak">Meşe</button>
+        <button class="btn" data-part="ust_panel" data-mat="white">Beyaz</button>
+      </div>
     </div>
+
     <div class="card">
-      <div>SOL PANEL</div>
-      <button class="btn" data-part="sol_panel" data-mat="walnut">Ceviz</button>
-      <button class="btn" data-part="sol_panel" data-mat="oak">Meşe</button>
-      <button class="btn" data-part="sol_panel" data-mat="white">Beyaz</button>
+      <div class="row"><strong>SOL PANEL</strong></div>
+      <div class="row">
+        <button class="btn" data-part="sol_panel" data-mat="walnut">Ceviz</button>
+        <button class="btn" data-part="sol_panel" data-mat="oak">Meşe</button>
+        <button class="btn" data-part="sol_panel" data-mat="white">Beyaz</button>
+      </div>
     </div>
+
     <div class="card">
-      <div>SAĞ PANEL</div>
-      <button class="btn" data-part="sag_panel" data-mat="walnut">Ceviz</button>
-      <button class="btn" data-part="sag_panel" data-mat="oak">Meşe</button>
-      <button class="btn" data-part="sag_panel" data-mat="white">Beyaz</button>
+      <div class="row"><strong>SAĞ PANEL</strong></div>
+      <div class="row">
+        <button class="btn" data-part="sag_panel" data-mat="walnut">Ceviz</button>
+        <button class="btn" data-part="sag_panel" data-mat="oak">Meşe</button>
+        <button class="btn" data-part="sag_panel" data-mat="white">Beyaz</button>
+      </div>
+    </div>
+
+    <!-- DİNAMİK DOKU AYARI -->
+    <div class="card" style="min-width:280px">
+      <div class="row"><strong>Doku Ayarları (Dinamik)</strong></div>
+      <div class="row">
+        <label class="mini">Parça:</label>
+        <select id="partSel" class="input">
+          <option value="alt_panel">alt_panel</option>
+          <option value="ust_panel">ust_panel</option>
+          <option value="sol_panel">sol_panel</option>
+          <option value="sag_panel">sag_panel</option>
+        </select>
+      </div>
+      <div class="row">
+        <label class="mini">Ölçek U</label>
+        <input id="uScale" type="range" min="0.1" max="2.5" step="0.01" value="0.35" class="range" />
+        <input id="uVal" class="input" style="width:64px" value="0.35" />
+      </div>
+      <div class="row">
+        <label class="mini">Ölçek V</label>
+        <input id="vScale" type="range" min="0.1" max="2.5" step="0.01" value="0.35" class="range" />
+        <input id="vVal" class="input" style="width:64px" value="0.35" />
+      </div>
+      <div class="row">
+        <label class="mini">Yön (°)</label>
+        <input id="rot" type="range" min="0" max="180" step="1" value="0" class="range" />
+        <input id="rotVal" class="input" style="width:64px" value="0" />
+        <button id="rot90" class="btn">90°</button>
+      </div>
+      <div class="row">
+        <button id="applyTex" class="btn">Bu parçaya uygula</button>
+        <button id="copyCfg" class="btn">Ayarları Kopyala</button>
+        <button id="resetTex" class="btn">Varsayılan</button>
+      </div>
     </div>
   </div>
 
   <script type="module">
     import * as THREE from "three";
-    import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js?v=12";
-    import { MeshoptDecoder } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/meshopt_decoder.module.js?v=12";
-    import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js?v=12";
+    import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js?v=13";
+    import { MeshoptDecoder } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/meshopt_decoder.module.js?v=13";
+    import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js?v=13";
 
     // ====== AYARLAR ======
-    const MODEL_PATH = "assets/model.glb?v=12";   // gerekirse dolap.glb/dolap_v1.glb yap
-    // Parça eşleşme anahtarları (mesh adı veya material adı)
+    const MODEL_PATH = "assets/model.glb?v=13";   // gerekirse dolap.glb/dolap_v1.glb yap
     const PART_KEYS = {
       alt_panel: ["alt_panel","alt","bottom","base"],
       ust_panel: ["ust_panel","ust","üst","top","kapak"],
       sol_panel: ["sol_panel","sol","left"],
       sag_panel: ["sag_panel","sag","sağ","right"]
     };
-    // Doku yolları (varsa kullanılır; yoksa renk fallback)
     const MATERIAL_TEXTURES = {
       walnut: "textures/walnut.jpg",
       oak:    "textures/oak.jpg",
@@ -90,29 +140,40 @@
     };
     const MATERIAL_COLORS = { walnut:0x8b5a2b, oak:0xb88a55, white:0xeeeeee };
 
-    // Parça bazlı “desen ölçeği ve yön” ayarı
-    // repeat küçüldükçe desen büyür. rotDeg: 0 ya da 90 tipik yeter.
+    // Başlangıç doku ayarları (parça bazlı)
     const TEX_TWEAK = {
-      alt_panel: { repeat:[0.28,0.28], rotDeg: 0  },
-      ust_panel: { repeat:[0.28,0.28], rotDeg: 0  },
-      sol_panel: { repeat:[0.28,0.28], rotDeg: 0 },
-      sag_panel: { repeat:[0.28,0.28], rotDeg: 0 }
+      alt_panel: { repeat:[0.20,0.20], rotDeg: 0  },
+      ust_panel: { repeat:[0.20,0.20], rotDeg: 0  },
+      sol_panel: { repeat:[0.20,0.20], rotDeg: 0 },
+      sag_panel: { repeat:[0.20,0.20], rotDeg: 0 }
     };
 
-    // ====== SAHNE ======
+    // ====== DURUM ======
     let scene, camera, renderer, controls, root;
     const container = document.getElementById('canvasContainer');
     const diagEl = document.getElementById('diag');
     const partTargets = { alt_panel:[], ust_panel:[], sol_panel:[], sag_panel:[] };
+    const CURRENT_MAT = { alt_panel:"white", ust_panel:"white", sol_panel:"white", sag_panel:"white" };
     const log = (m)=>{ diagEl.textContent = m; console.log(m); };
+
+    // UI elemanları
+    const partSel = document.getElementById('partSel');
+    const uScale = document.getElementById('uScale'); const uVal = document.getElementById('uVal');
+    const vScale = document.getElementById('vScale'); const vVal = document.getElementById('vVal');
+    const rot = document.getElementById('rot');       const rotVal = document.getElementById('rotVal');
+    const rot90 = document.getElementById('rot90');
+    const applyTexBtn = document.getElementById('applyTex');
+    const resetTexBtn = document.getElementById('resetTex');
+    const copyCfgBtn = document.getElementById('copyCfg');
 
     init3D();
     await loadModel();
     animate();
+    syncUIFromState();
 
     function init3D(){
       scene = new THREE.Scene();
-      scene.background = new THREE.Color(0xf3f0ea); // açık bej/beyaz arkaplan
+      scene.background = new THREE.Color(0xf3f0ea);
 
       const {w,h} = size();
       camera = new THREE.PerspectiveCamera(50, w/h, 0.01, 5000);
@@ -123,22 +184,15 @@
       renderer.setSize(w, h);
       container.appendChild(renderer.domElement);
 
-      // Işıklar (doğru ekleme)
       const d1 = new THREE.DirectionalLight(0xffffff, 1.0);
       d1.position.set(3,4,5);
       scene.add(d1);
-      const amb = new THREE.AmbientLight(0xffffff, 0.55);
-      scene.add(amb);
+      scene.add(new THREE.AmbientLight(0xffffff, 0.55));
 
-      // Orbit Controls (zoom/pan/rotate)
       controls = new OrbitControls(camera, renderer.domElement);
-      controls.enableDamping = true;
-      controls.dampingFactor = 0.08;
-      controls.minDistance = 0.25;
-      controls.maxDistance = 50;
-      controls.zoomSpeed = 1.0;
-      controls.rotateSpeed = 0.8;
-      controls.panSpeed = 0.6;
+      controls.enableDamping = true; controls.dampingFactor = 0.08;
+      controls.minDistance = 0.25;   controls.maxDistance = 50;
+      controls.zoomSpeed = 1.0;      controls.rotateSpeed = 0.8; controls.panSpeed = 0.6;
 
       window.addEventListener('resize', onResize);
     }
@@ -147,43 +201,32 @@
       const r = container.getBoundingClientRect();
       return { w: r.width || window.innerWidth, h: r.height || (window.innerHeight - 180) };
     }
-
-    function animate(){
-      requestAnimationFrame(animate);
-      controls && controls.update();
-      renderer.render(scene,camera);
-    }
+    function animate(){ requestAnimationFrame(animate); controls.update(); renderer.render(scene,camera); }
 
     async function loadModel(){
       try{
         log("Model yükleniyor…");
         const loader = new GLTFLoader();
-        loader.setMeshoptDecoder(MeshoptDecoder); // Meshopt sıkıştırma için
+        loader.setMeshoptDecoder(MeshoptDecoder);
 
         const gltf = await loader.loadAsync(MODEL_PATH);
-        root = gltf.scene;
-        scene.add(root);
-
+        root = gltf.scene; scene.add(root);
         centerAndFrame(root);
 
-        // Parça gruplarını topla; malzemeleri klonla
         root.traverse(obj=>{
           if (!obj.isMesh) return;
           const name = (obj.name||"").toLowerCase();
           const matName = (obj.material?.name||"").toLowerCase();
           obj.material = Array.isArray(obj.material) ? obj.material.map(m=>m.clone()) : obj.material.clone();
           for (const key in PART_KEYS){
-            if (PART_KEYS[key].some(k=> name.includes(k) || matName.includes(k))) {
-              partTargets[key].push(obj);
-            }
+            if (PART_KEYS[key].some(k=> name.includes(k) || matName.includes(k))) partTargets[key].push(obj);
           }
         });
 
-        // Başlangıç: beyaz
-        await applyPart("alt_panel","white");
-        await applyPart("ust_panel","white");
-        await applyPart("sol_panel","white");
-        await applyPart("sag_panel","white");
+        // Başlangıç: beyaz + tweak uygula
+        for (const p of Object.keys(partTargets)){
+          await applyPart(p, "white", /*onlyTex=*/true);
+        }
 
         log("Hazır.");
       }catch(e){ log("MODEL YÜKLENEMEDİ → "+e.message); }
@@ -193,95 +236,124 @@
       const box = new THREE.Box3().setFromObject(object);
       const center = box.getCenter(new THREE.Vector3());
       object.position.sub(center);
-
       const size = box.getSize(new THREE.Vector3());
       const maxDim = Math.max(size.x, size.y, size.z);
-      const fitOffset = 1.6;
-      const fov = THREE.MathUtils.degToRad(camera.fov);
-      const dist = (maxDim / (2 * Math.tan(fov / 2))) * fitOffset;
-
-      camera.position.set(0, 0, dist);
+      const dist = (maxDim / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2))) * 1.6;
+      camera.position.set(0,0,dist);
       camera.near = dist/50; camera.far = dist*50; camera.updateProjectionMatrix();
-      if (controls){ controls.target.set(0,0,0); controls.update(); }
+      controls.target.set(0,0,0); controls.update();
     }
+    function onResize(){ const {w,h}=size(); camera.aspect=w/h; camera.updateProjectionMatrix(); renderer.setSize(w,h); controls.update(); }
 
-    function onResize(){
-      const {w,h} = size();
-      camera.aspect = w/h; camera.updateProjectionMatrix();
-      renderer.setSize(w,h);
-      controls && controls.update();
-    }
-
-    // ====== DOKU YÜKLEYİCİ ======
+    // --- Doku yükleyici ---
     const textureCache = new Map();
     function loadTexture(url){
       return new Promise((resolve,reject)=>{
         if (textureCache.has(url)) return resolve(textureCache.get(url));
-        new THREE.TextureLoader().load(
-          url,
-          (tx)=>{
-            // Doğal renkler ve düzgün kaplama
-            tx.colorSpace = THREE.SRGBColorSpace;
-            tx.wrapS = THREE.RepeatWrapping;
-            tx.wrapT = THREE.RepeatWrapping;
-            tx.center.set(0.5, 0.5);   // pivot
-            tx.repeat.set(1,1);        // temel; parça bazında ayarlanacak
-            tx.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()||8);
-            textureCache.set(url, tx);
-            resolve(tx);
-          },
-          undefined,
-          ()=>reject(new Error("Doku yüklenemedi: "+url))
-        );
+        new THREE.TextureLoader().load(url, tx=>{
+          tx.colorSpace = THREE.SRGBColorSpace;
+          tx.wrapS = THREE.RepeatWrapping; tx.wrapT = THREE.RepeatWrapping;
+          tx.center.set(0.5,0.5);
+          tx.repeat.set(1,1);
+          tx.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()||8);
+          textureCache.set(url, tx); resolve(tx);
+        }, undefined, ()=>reject(new Error("Doku yüklenemedi: "+url)));
       });
     }
-
     async function buildMaterialFromKey(key){
       const path = MATERIAL_TEXTURES[key];
       if (path){
-        try{
-          const tx = await loadTexture(path);
+        try{ const tx = await loadTexture(path);
           return new THREE.MeshStandardMaterial({ map: tx, roughness:0.6, metalness:0.05 });
-        }catch(e){
-          log(e.message + " → renk fallback");
-        }
+        }catch(e){ log(e.message+" → renk fallback"); }
       }
-      const color = MATERIAL_COLORS[key] || 0xcccccc;
+      const color = MATERIAL_COLORS[key]||0xcccccc;
       return new THREE.MeshStandardMaterial({ color, roughness:0.6, metalness:0.05 });
     }
 
-    // Parça uygulaması: ölçek + yön aynı anda
-    async function applyPart(partKey, matKey){
+    // --- Uygulama: malzeme + parça tweak ---
+    async function applyPart(partKey, matKey, onlyTex=false){
       const targets = partTargets[partKey] || [];
       if (!targets.length){ log(partKey+" için mesh bulunamadı."); return; }
 
-      const mat = await buildMaterialFromKey(matKey);
-
-      // Doku ayarı parça bazında
-      const cfg = TEX_TWEAK[partKey] || {};
-      if (mat.map){
-        mat.map = mat.map.clone();  // diğer parçalardan bağımsız olsun
-        const [ru, rv] = cfg.repeat || [1,1];
-        mat.map.repeat.set(ru, rv);
-        mat.map.center.set(0.5, 0.5);
-        mat.map.rotation = ((cfg.rotDeg || 0) * Math.PI) / 180;
-        mat.map.needsUpdate = true;
+      if (!onlyTex){
+        const mat = await buildMaterialFromKey(matKey);
+        targets.forEach(m => { m.material = mat; m.material.needsUpdate = true; });
+        CURRENT_MAT[partKey] = matKey;
       }
 
-      targets.forEach(m => { m.material = mat; m.material.needsUpdate = true; });
-      log(`${partKey} → ${matKey}`);
+      applyTexParams(partKey); // her durumda en güncel ölçek/yön
+      log(`${partKey} → ${CURRENT_MAT[partKey]} | U:${TEX_TWEAK[partKey].repeat[0]} V:${TEX_TWEAK[partKey].repeat[1]} R:${TEX_TWEAK[partKey].rotDeg}°`);
     }
 
-    // UI
+    function applyTexParams(partKey){
+      const targets = partTargets[partKey] || [];
+      const cfg = TEX_TWEAK[partKey] || {repeat:[1,1], rotDeg:0};
+      targets.forEach(m=>{
+        const mats = Array.isArray(m.material) ? m.material : [m.material];
+        mats.forEach(mat=>{
+          if (!mat.map) return;
+          // Her parça kendi kopyasını kullansın
+          mat.map = mat.map.clone();
+          mat.map.repeat.set(cfg.repeat[0], cfg.repeat[1]);
+          mat.map.center.set(0.5,0.5);
+          mat.map.rotation = (cfg.rotDeg * Math.PI) / 180;
+          mat.map.needsUpdate = true;
+        });
+      });
+    }
+
+    // === UI OLAYLARI ===
     document.querySelectorAll('button[data-part]').forEach(btn=>{
       btn.addEventListener('click', ()=> applyPart(btn.dataset.part, btn.dataset.mat));
     });
     document.getElementById('applyUid').addEventListener('click', ()=>{
       const uid = document.getElementById('uidInput').value.trim();
       if (!uid) return;
-      if (uid === "0001234567") applyPart("alt_panel","walnut"); // örnek
+      if (uid === "0001234567") applyPart("alt_panel","walnut");
+    });
+
+    // Dinamik panel
+    function syncUIFromState(){
+      const p = partSel.value;
+      const cfg = TEX_TWEAK[p];
+      uScale.value = uVal.value = cfg.repeat[0];
+      vScale.value = vVal.value = cfg.repeat[1];
+      rot.value = rotVal.value = cfg.rotDeg;
+    }
+    function readUIToState(){
+      const p = partSel.value;
+      TEX_TWEAK[p] = {
+        repeat:[ clamp(parseFloat(uVal.value),0.1,2.5), clamp(parseFloat(vVal.value),0.1,2.5) ],
+        rotDeg: clamp(parseInt(rotVal.value||"0",10), 0, 180)
+      };
+    }
+    function clamp(v,min,max){ return isNaN(v)?min:Math.max(min,Math.min(max,v)); }
+
+    [uScale,vScale,rot].forEach(inp=>{
+      inp.addEventListener('input', ()=>{
+        if (inp===uScale) uVal.value = inp.value;
+        if (inp===vScale) vVal.value = inp.value;
+        if (inp===rot)    rotVal.value = inp.value;
+        readUIToState(); applyTexParams(partSel.value);
+      });
+    });
+    [uVal,vVal,rotVal].forEach(inp=>{
+      inp.addEventListener('change', ()=>{ readUIToState(); applyTexParams(partSel.value); syncUIFromState(); });
+    });
+    partSel.addEventListener('change', syncUIFromState);
+    rot90.addEventListener('click', ()=>{ rot.value=rotVal.value= (parseInt(rotVal.value,10)===90?0:90); readUIToState(); applyTexParams(partSel.value); });
+    applyTexBtn.addEventListener('click', ()=> applyPart(partSel.value, CURRENT_MAT[partSel.value], /*onlyTex=*/true));
+    resetTexBtn.addEventListener('click', ()=>{
+      const p = partSel.value;
+      TEX_TWEAK[p] = { repeat:[0.35,0.35], rotDeg:(p.includes("sol")||p.includes("sag"))?90:0 };
+      syncUIFromState(); applyTexParams(p);
+    });
+    copyCfgBtn.addEventListener('click', async ()=>{
+      const txt = JSON.stringify(TEX_TWEAK, null, 2);
+      try{ await navigator.clipboard.writeText(txt); log("Ayarlar panoya kopyalandı."); }
+      catch{ console.log(txt); log("Kopyalanamadı, konsola yazıldı."); }
     });
   </script>
 </body>
 </html>
-
