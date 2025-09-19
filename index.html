@@ -206,18 +206,29 @@
 
     // ====== DOKU YÜKLEYİCİ ======
     const textureCache = new Map();
-    function loadTexture(url){
-      return new Promise((resolve,reject)=>{
-        if (textureCache.has(url)) return resolve(textureCache.get(url));
-        new THREE.TextureLoader().load(url, (tx)=>{
-          tx.wrapS = THREE.RepeatWrapping; tx.wrapT = THREE.RepeatWrapping;
-          tx.repeat.set(2,2);
-          tx.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()||8);
-          textureCache.set(url, tx);
-          resolve(tx);
-        }, undefined, ()=>reject(new Error("Doku yüklenemedi: "+url)));
-      });
-    }
+function loadTexture(url){
+  return new Promise((resolve,reject)=>{
+    if (textureCache.has(url)) return resolve(textureCache.get(url));
+    new THREE.TextureLoader().load(
+      url,
+      (tx)=>{
+        // Dokunun tam oturması için döşemeyi kapat / 1x1 yap
+        tx.wrapS = THREE.ClampToEdgeWrapping;
+        tx.wrapT = THREE.ClampToEdgeWrapping;
+        tx.repeat.set(1,1);           // ← eskiden (2,2) idi
+        tx.offset.set(0,0);
+        // Renkler doğal görünsün
+        tx.colorSpace = THREE.SRGBColorSpace;   // r160+
+        tx.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()||8);
+        textureCache.set(url, tx);
+        resolve(tx);
+      },
+      undefined,
+      ()=>reject(new Error("Doku yüklenemedi: "+url))
+    );
+  });
+}
+
 
     async function buildMaterialFromKey(key){
       const path = MATERIAL_TEXTURES[key];
@@ -254,3 +265,4 @@
   </script>
 </body>
 </html>
+
