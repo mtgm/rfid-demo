@@ -220,51 +220,64 @@
     }
     function animate(){ requestAnimationFrame(animate); controls.update(); renderer.render(scene,camera); }
 
-    async function switchModel(key){
-      if (!MODEL_PATHS[key]) { log("Model yolu yok: "+key); return; }
-      currentModel = key;
-      await loadModelFrom(MODEL_PATHS[key]);
+async function switchModel(key){
+  if (!MODEL_PATHS[key]) { log("Model yolu yok: "+key); return; }
+  currentModel = key;
+  await loadModelFrom(MODEL_PATHS[key], /*keepView=*/true); // ← kamera sabit
+}
+
+
+async function loadModelFrom(path, keepView=false){
+  try{
+    log("Model yükleniyor… "+path);
+
+    // KAMERA DURUMUNU KAYDET (gerekirse geri yüklenecek)
+    const camPos   = camera.position.clone();
+    const camTgt   = controls.target.clone();
+
+    disposeRoot();
+    for (const k in partTargets) partTargets[k] = [];
+
+    const loader = new GLTFLoader();
+    loader.setMeshoptDecoder(MeshoptDecoder);
+    const gltf = await loader.loadAsync(path);
+
+    root = gltf.scene;
+    scene.add(root);
+
+    if (keepView){
+      // Kamerayı ELLEME, sadece modeli merkeze al
+      centerOnly(root);
+      camera.position.copy(camPos);
+      controls.target.copy(camTgt);
+      controls.update();
+    } else {
+      // İlk yüklemede kadrajla
+      centerAndFrame(root);
     }
 
-    async function loadModelFrom(path){
-      try{
-        log("Model yükleniyor… "+path);
-        // Eski root’u temizle
-        disposeRoot();
+    // Parçaları topla + malzemeleri klonla
+    root.traverse(obj=>{
+      if (!obj.isMesh) return;
+      const name = (obj.name||"").toLowerCase();
+      const matName = (obj.material?.name||"").toLowerCase();
+      obj.castShadow = true; obj.receiveShadow = true;
+      obj.material = Array.isArray(obj.material) ? obj.material.map(m=>m.clone()) : obj.material.clone();
+      for (const key in PART_KEYS){
+        if (PART_KEYS[key].some(k=> name.includes(k) || matName.includes(k))) partTargets[key].push(obj);
+      }
+    });
 
-        // Hedef dizilerini sıfırla
-        for (const k in partTargets) partTargets[k] = [];
-
-        const loader = new GLTFLoader();
-        loader.setMeshoptDecoder(MeshoptDecoder);
-        const gltf = await loader.loadAsync(path);
-
-        root = gltf.scene;
-        scene.add(root);
-
-        centerAndFrame(root);
-
-        // Parçaları topla + malzeme klonla
-        root.traverse(obj=>{
-          if (!obj.isMesh) return;
-          const name = (obj.name||"").toLowerCase();
-          const matName = (obj.material?.name||"").toLowerCase();
-          obj.castShadow = true; obj.receiveShadow = true;
-          obj.material = Array.isArray(obj.material) ? obj.material.map(m=>m.clone()) : obj.material.clone();
-          for (const key in PART_KEYS){
-            if (PART_KEYS[key].some(k=> name.includes(k) || matName.includes(k))) partTargets[key].push(obj);
-          }
-        });
-
-        // Başlangıç: beyaz + doku parametreleri
-        for (const p of Object.keys(partTargets)){
-          CURRENT_MAT[p] = "white";
-          await applyPart(p, "white", /*onlyTex=*/true);
-        }
-
-        log("Hazır. ("+keyLabel(currentModel)+")");
-      }catch(e){ log("MODEL YÜKLENEMEDİ → "+e.message); }
+    // Başlangıç: beyaz + doku parametreleri
+    for (const p of Object.keys(partTargets)){
+      CURRENT_MAT[p] = "white";
+      await applyPart(p, "white", /*onlyTex=*/true);
     }
+
+    log("Hazır. ("+keyLabel(currentModel)+")");
+  }catch(e){ log("MODEL YÜKLENEMEDİ → "+e.message); }
+}
+
 
     function keyLabel(k){ return k==="A"?"Model A":"Model B"; }
 
@@ -298,6 +311,12 @@
       camera.near = dist/50; camera.far = dist*50; camera.updateProjectionMatrix();
       controls.target.set(0,0,0); controls.update();
     }
+    function centerOnly(object){
+  const box = new THREE.Box3().setFromObject(object);
+  const center = box.getCenter(new THREE.Vector3());
+  object.position.sub(center);
+}
+
     function onResize(){ const {w,h}=size(); camera.aspect=w/h; camera.updateProjectionMatrix(); renderer.setSize(w,h); controls.update(); }
 
     // --- Doku yükleyici ---
@@ -422,3 +441,4 @@
   </script>
 </body>
 </html>
+
